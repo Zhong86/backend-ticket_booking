@@ -118,3 +118,10 @@ A key deliverable of this project is proving your locking strategy works. Includ
 - [ ] Add consistent hashing if sharding seat inventory across nodes
 - [ ] Add OpenAPI/Swagger docs
 - [ ] Containerize with Docker and deploy to a free-tier cloud instance
+
+## Notes
+### Indexes
+Creates a B-tree for values -> row locations, so database can jump to matching rows instead of checking every row in the table. Trades off write speed and storage for read speed. 
+- Every index has to be updated on every write. If events has 5 indexes and a row is inserted, Postgres has to write 6 times. 
+- Each index uses around 10 - 50% of the table's size. 
+- Diminishing returns on low-cardinality columns. If a .status only has 4 options and 1 status is 40%, that wouldn't be that much faster compared to no index. 
