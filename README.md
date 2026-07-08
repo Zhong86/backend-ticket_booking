@@ -4,43 +4,7 @@ A practice backend project for **Amazon (AWS) Backend Internship** prep — buil
 
 Think Ticketmaster/BookMyShow: browse events, view seat maps, book a seat, get a confirmation. Simple to describe, deep enough to require real concurrency control, caching, async processing, and rate limiting.
 
-## Tech stack
-
-- **Language:** Java 21
-- **Framework:** Spring Boot 4
-- **Database:** PostgreSQL
-- **Cache:** Redis
-- **Queue:** In-memory / Spring `@Async` (swappable for Amazon SQS later)
-
-## Why this project
-
-Previous practice projects (nested comments, notification system) covered recursive/tree data, event-driven notifications, cursor-based pagination, and basic rate limiting. This project builds on those and adds the piece that's usually missing from CRUD-only practice: **concurrency correctness under contention** — two users can't book the same seat, retries can't double-charge, and a sold-out show needs a fair waitlist.
-
-## Architecture
-
-```
-Client app
-    │
-    ▼
-API gateway  ── rate limiting, auth
-    │
-    ▼
-Booking service ── seat lock, idempotency
-    │
-    ├──▶ Postgres   ── row-level locking (source of truth)
-    ├──▶ Redis cache ── seat availability (cache-aside)
-    │
-    ▼
-Message queue ── async, SQS-style
-    │
-    ▼
-Notification service ── email/SMS confirmation
-```
-
 ## Build phases
-
-Each phase is scoped to teach a specific interview-relevant concept. Build them in order.
-
 ### Phase 1 — Catalog & browsing
 - `events`, `venues`, `showtimes` tables
 - `GET /events` with **cursor-based (keyset) pagination**
