@@ -9,8 +9,6 @@ import java.util.List;
 
 @Service
 public class EventService {
-
-  // Uses short TTL instead of explicit cache invalidation on write: a new event
   private static final Duration CACHE_TTL = Duration.ofSeconds(30);
 
   private final EventRepository eventRepository;
@@ -23,11 +21,11 @@ public class EventService {
 
   public EventPageResult getEvents(Long cursor, int limit) {
     String cacheKey = buildCacheKey(cursor, limit);
+
   
-    //try cache
     EventPageResult cached = (EventPageResult) redisTemplate.opsForValue().get(cacheKey);
     if (cached != null) {
-      return cached;
+        return cached;
     }
 
     //cache miss

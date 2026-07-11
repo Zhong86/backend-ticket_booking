@@ -6,29 +6,29 @@ Think Ticketmaster/BookMyShow: browse events, view seat maps, book a seat, get a
 
 ## Build phases
 ### Phase 1 — Catalog & browsing
-- `events`, `venues`, `showtimes` tables
-- `GET /events` with **cursor-based (keyset) pagination**
-- Redis cache-aside for popular event listings
+[x] `events`, `venues`, `showtimes` tables
+[x] `GET /events` with **cursor-based (keyset) pagination**
+[x] Redis cache-aside for popular event listings
 
 ### Phase 2 — Seat inventory & locking
-- `seats` table (`id`, `showtime_id`, `row`, `col`, `status`)
-- `POST /bookings` using `SELECT ... FOR UPDATE` (pessimistic) or a `version` column (optimistic locking)
-- Load test: fire 50 concurrent requests at the same seat, prove exactly one succeeds
+[x] `seats` table (`id`, `showtime_id`, `row`, `col`, `status`)
+[x] `POST /bookings` using `SELECT ... FOR UPDATE` (pessimistic) or a `version` column (optimistic locking)
+[x] Load test: fire 50 concurrent requests at the same seat, prove exactly one succeeds
 
 ### Phase 3 — Idempotency & holds
-- `Idempotency-Key` header so retried requests don't double-book
-- Temporary "hold" state (5 min) while payment is pending, auto-released via scheduled job or Redis `EXPIRE`
+[] `Idempotency-Key` header so retried requests don't double-book
+[] Temporary "hold" state (5 min) while payment is pending, auto-released via scheduled job or Redis `EXPIRE`
 
 ### Phase 4 — Async confirmation
-- On successful payment, publish an event to a queue
-- Notification service consumes the queue and sends the confirmation (reuses the earlier notification system)
+[] On successful payment, publish an event to a queue
+[] Notification service consumes the queue and sends the confirmation (reuses the earlier notification system)
 
 ### Phase 5 — Rate limiting & abuse protection
-- Apply rate limiting specifically to the booking endpoint (limit bookings per user per minute)
+[] Apply rate limiting specifically to the booking endpoint (limit bookings per user per minute)
 
 ### Phase 6 — Waitlist
-- Sold-out show → users join a waitlist (queue or min-heap by join time/priority)
-- Seat released → pop next in line, notify them
+[] Sold-out show → users join a waitlist (queue or min-heap by join time/priority)
+[] Seat released → pop next in line, notify them
 
 ## Concepts covered
 
@@ -84,8 +84,35 @@ A key deliverable of this project is proving your locking strategy works. Includ
 - [ ] Containerize with Docker and deploy to a free-tier cloud instance
 
 ## Notes
+### Redis Caching 
+Caches info acquired from DB with expiration of CACHE_TTL. Set cache as key: value pair. 
+Problem: Springboot saves as EventPageResult (premade class) but Redis gets and returns only as JSON - needs additional parsing with GenericJacksonJsonRedisSerializer & BasicPolymorphicTypeValidator
 ### Indexes
 Creates a B-tree for values -> row locations, so database can jump to matching rows instead of checking every row in the table. Trades off write speed and storage for read speed. 
 - Every index has to be updated on every write. If events has 5 indexes and a row is inserted, Postgres has to write 6 times. 
 - Each index uses around 10 - 50% of the table's size. 
 - Diminishing returns on low-cardinality columns. If a .status only has 4 options and 1 status is 40%, that wouldn't be that much faster compared to no index. 
+### Locking
+- Pessimistic Locking: Assume conflict will happen, lock the row. 
+```
+@Lock(LockModeType.PESSIMISTIC_WRITE)
+@Override
+Optional<Seat> findById(Long id);
+```
+- Optimistic Locking: Assume conflict won't happen, check if already taken by someone at the end.
+```
+// Add @Version in Entity, Hibernate updates version everytime row is write.
+@Version
+@Column(nullable = false)
+private Integer version;
+
+@Query("SELECT s FROM Seat s WHERE s.id = :id")
+Optional<Seat> findByIdNoLock(@Param("id") Long id);
+```
+- Use ConcurrentBookingTest to find which method is faster
+#### HIBERNATE BASED ISSUE
+With Hibernate, optimistic-locking can be error. seatRepository DOES NOT run the UPDATE immediately but instead batches changes and flushes at the end of transaction. The REAL UPDATE query can happen after my method has exited my try/block. 
+The fix is to force the flush in the try block. ``` saveAndFlush() ```
+#### FINAL RESULT - Optimistic Locking
+Optimistic: 110 ms
+Pessimistic: 305 ms

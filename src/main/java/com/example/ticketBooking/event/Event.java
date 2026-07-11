@@ -1,10 +1,17 @@
 package com.example.ticketBooking.event;
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
 import java.time.Instant;
 
 @Entity
 @Table(name = "events")
+@Getter
+@Setter
+@NoArgsConstructor
 public class Event {
 
     @Id
@@ -20,27 +27,8 @@ public class Event {
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 
-    protected Event() {
-    }
-
     public Event(String name, Long venueId) {
         this.name = name;
         this.venueId = venueId;
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public Long getVenueId() {
-        return venueId;
-    }
-
-    public Instant getCreatedAt() {
-        return createdAt;
     }
 }
