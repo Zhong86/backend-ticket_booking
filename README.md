@@ -147,3 +147,10 @@ UPDATE FROM seat s SET s.status = 'AVAILABLE' WHERE s.id in :seatIds
 
 ### Testcontainers
 Java library that allows test code spin up real Docker containers. This tests with real Postgres / Redis / RabbitMQ instead of using a mock or in-memory. 
+HoldExpirySchedulerTest : 
+1. flipsSeatsAndBookings() -> Seeds Seat with HELD & heldUntil 60 seconds in the past (expired state). Calls releaseExpiredHolds to switch it to AVAILABLE. 
+2. useConstantQueryCount() -> Tests queries to stay low; checks if N + 1 is solved with assertThat(queryCount) < 3. 
+[!WARNING] 
+Use stats.getPrepareStatementCount() instead of stats.getQueryExecutionCount() to track query numbers. Hibernate's Statistics ignores @Query, so need to track the prepared statements instead. 
+
+

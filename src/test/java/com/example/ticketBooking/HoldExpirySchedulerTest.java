@@ -23,6 +23,12 @@ import com.example.ticketBooking.booking.BookingRepository;
 import com.example.ticketBooking.booking.HoldExpiryScheduler;
 import com.example.ticketBooking.booking.Seat;
 import com.example.ticketBooking.booking.SeatRepository;
+import com.example.ticketBooking.event.Event;
+import com.example.ticketBooking.event.EventRepository;
+import com.example.ticketBooking.event.Showtime;
+import com.example.ticketBooking.event.ShowtimeRepository;
+import com.example.ticketBooking.venue.Venue;
+import com.example.ticketBooking.venue.VenueRepository;
 
 import jakarta.persistence.EntityManagerFactory;
 
@@ -42,8 +48,8 @@ public class HoldExpirySchedulerTest {
       .withUsername("postgres")
       .withPassword("postgres")
       .withCopyFileToContainer(
-    org.testcontainers.utility.MountableFile.forHostPath("schema.sql"),
-    "/docker-entrypoint-initdb.d/schema.sql");
+          org.testcontainers.utility.MountableFile.forHostPath("schema.sql"),
+          "/docker-entrypoint-initdb.d/schema.sql");
 
   @DynamicPropertySource
   static void configureDatasource(DynamicPropertyRegistry registry) {
@@ -64,13 +70,37 @@ public class HoldExpirySchedulerTest {
   @Autowired
   EntityManagerFactory entityManagerFactory;
 
-  // NOTE: with Testcontainers each test class gets its own fresh container,
-  // but TRUNCATE between @Test methods within the class is still needed since
-  // the container (and its schema) persists across the whole class by default.
+  @Autowired
+  VenueRepository venueRepository;
+
+  @Autowired
+  EventRepository eventRepository;
+
+  @Autowired
+  ShowtimeRepository showtimeRepository;
+
+  // showtime_id is a NOT NULL FK on seats -> we need one real Showtime row
+  // (which itself needs a real Venue + Event) before we can seed any seats.
+  Long showtimeId;
+
+  // running counter so every seat in a test gets a unique (seat_row,
+  // seat_number) pair -- schema has UNIQUE(showtime_id, seat_row, seat_number)
+  int seatCounter = 0;
+
   @BeforeEach
   void resetDb() {
     bookingRepository.deleteAll();
     seatRepository.deleteAll();
+
+    // .save() on a Spring Data repository opens/commits its own transaction,
+    // so this works fine outside a @Transactional test class -- unlike a
+    // bare EntityManager.persist(), which needs an active tx on the thread.
+    Venue venue = venueRepository.save(new Venue("Test Arena", "Testville"));
+    Event event = eventRepository.save(new Event("Test Event", venue.getId()));
+    Showtime showtime = showtimeRepository.save(new Showtime(event.getId(), Instant.now().plusSeconds(3600)));
+
+    showtimeId = showtime.getId();
+    seatCounter = 0;
   }
 
   @Test
@@ -104,9 +134,11 @@ public class HoldExpirySchedulerTest {
   void releaseExpiredHolds_usesConstantQueryCount() {
     // arrange — seed 50 expired holds
     List<Long> seatIds = new ArrayList<>();
+
     for (int i = 0; i < 50; i++) {
       Seat seat = seatRepository.save(newSeat("HELD"));
-      bookingRepository.save(heldBooking(seat.getId(), Instant.now().minusSeconds(60)));
+      Booking bookingTmp = heldBooking(seat.getId(), Instant.now().minusSeconds(60));
+      bookingRepository.save(bookingTmp);
       seatIds.add(seat.getId());
     }
 
@@ -119,23 +151,29 @@ public class HoldExpirySchedulerTest {
 
     // assert — should be ~3 queries (1 select + 2 bulk updates), not ~150
     long queryCount = stats.getQueryExecutionCount();
-    assertThat(queryCount).isLessThanOrEqualTo(5);
+    long stmtCount = stats.getPrepareStatementCount();
+    System.out.println("Query count: " + queryCount + ", Statement count: " + stmtCount);
+    for (String query : stats.getQueries()) {
+      System.out.println("  [" + stats.getQueryStatistics(query).getExecutionCount() + "x] " + query);
+    }
+    assertThat(stmtCount).isLessThanOrEqualTo(3);
   }
 
   // --- test helpers ---------------------------------------------------
-  // ASSUMPTION: adjust field names/constructor args to match your actual
-  // Seat/Booking entities — I don't have those source files to verify against.
 
   private Seat newSeat(String status) {
     Seat seat = new Seat();
-    seat.setStatus(status);
-    // showtime_id is NOT NULL in schema.sql — seed a real showtime first
-    // if your Seat entity requires a non-null showtimeId at save time.
+    seat.setShowtimeId(showtimeId); // Long — FK to showtimes(id)
+    seat.setSeatRow("A"); // String
+    seat.setSeatNumber(seatCounter++); // Integer — unique per showtime
+    seat.setStatus(status); // String
+    // leave `version` null — Hibernate treats a new entity's null @Version
+    // as "not yet persisted" and initializes it to 0 on insert.
     return seat;
   }
 
   private Booking heldBooking(Long seatId, Instant heldUntil) {
-    Booking booking = new Booking(seatId, /* userId */ 1L, /* idempotencyKey */ java.util.UUID.randomUUID().toString());
+    Booking booking = new Booking(seatId, 1L, java.util.UUID.randomUUID().toString());
     booking.markHeld(heldUntil);
     return booking;
   }
