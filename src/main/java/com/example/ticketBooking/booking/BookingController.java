@@ -19,7 +19,7 @@ public class BookingController {
     @PostMapping
     public ResponseEntity<Booking> bookSeat(
             @RequestBody BookingRequest request,
-            @RequestParam(defaultValue = "pessimistic") String strategy) {
+            @RequestParam(defaultValue = "optimistic") String strategy) {
 
         var result = "optimistic".equals(strategy)
             ? bookingService.bookSeatOptimistic(request.seatId(), request.userId(), request.idempotencyKey())

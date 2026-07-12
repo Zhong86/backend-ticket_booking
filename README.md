@@ -16,8 +16,8 @@ Think Ticketmaster/BookMyShow: browse events, view seat maps, book a seat, get a
 [x] Load test: fire 50 concurrent requests at the same seat, prove exactly one succeeds
 
 ### Phase 3 — Idempotency & holds
-[] `Idempotency-Key` header so retried requests don't double-book
-[] Temporary "hold" state (5 min) while payment is pending, auto-released via scheduled job or Redis `EXPIRE`
+[x] `Idempotency-Key` header so retried requests don't double-book
+[x] Temporary "hold" state (5 min) while payment is pending, auto-released via scheduled job or Redis `EXPIRE`
 
 ### Phase 4 — Async confirmation
 [] On successful payment, publish an event to a queue
@@ -84,14 +84,17 @@ A key deliverable of this project is proving your locking strategy works. Includ
 - [ ] Containerize with Docker and deploy to a free-tier cloud instance
 
 ## Notes
+
 ### Redis Caching 
 Caches info acquired from DB with expiration of CACHE_TTL. Set cache as key: value pair. 
 Problem: Springboot saves as EventPageResult (premade class) but Redis gets and returns only as JSON - needs additional parsing with GenericJacksonJsonRedisSerializer & BasicPolymorphicTypeValidator
+
 ### Indexes
 Creates a B-tree for values -> row locations, so database can jump to matching rows instead of checking every row in the table. Trades off write speed and storage for read speed. 
 - Every index has to be updated on every write. If events has 5 indexes and a row is inserted, Postgres has to write 6 times. 
 - Each index uses around 10 - 50% of the table's size. 
 - Diminishing returns on low-cardinality columns. If a .status only has 4 options and 1 status is 40%, that wouldn't be that much faster compared to no index. 
+
 ### Locking
 - Pessimistic Locking: Assume conflict will happen, lock the row. 
 ```
@@ -116,3 +119,31 @@ The fix is to force the flush in the try block. ``` saveAndFlush() ```
 #### FINAL RESULT - Optimistic Locking
 Optimistic: 110 ms
 Pessimistic: 305 ms
+
+### Idempotency Key & Hold
+Makes sure a double call will not trigger another booking -> just findByIdempotencyKey. 
+Hold will be triggered by HoldExpiryScheduler, it is first initiated when booking with HOLD_DURATION saved as heldUntil. 
+
+### N + 1 Problem
+```
+List<Booking> expired = bookingRepository.findByStatusAndHeldUntilBefore("HELD", Instant.now());
+for (Booking booking : expired) {
+  seatRepository.findById(booking.getSeatId()).ifPresent(seat -> {
+    seat.setStatus("AVAILABLE");
+    seatRepository.save(seat);
+  });
+  booking.setStatus("EXPIRED");
+  bookingRepository.save(booking);
+}
+```
+- bookRepo reads once
+- seatRepo reads N times from expired
+- seat writes N times
+- booking sets N times
+Solve using: 
+```
+UPDATE FROM seat s SET s.status = 'AVAILABLE' WHERE s.id in :seatIds
+```
+
+### Testcontainers
+Java library that allows test code spin up real Docker containers. This tests with real Postgres / Redis / RabbitMQ instead of using a mock or in-memory. 

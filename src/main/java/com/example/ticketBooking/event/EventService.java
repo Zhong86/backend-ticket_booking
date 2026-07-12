@@ -9,7 +9,7 @@ import java.util.List;
 
 @Service
 public class EventService {
-  private static final Duration CACHE_TTL = Duration.ofSeconds(30);
+  private static final Duration CACHE_TTL = Duration.ofSeconds(90);
 
   private final EventRepository eventRepository;
   private final RedisTemplate<String, Object> redisTemplate;

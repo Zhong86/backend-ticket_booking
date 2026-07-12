@@ -32,13 +32,29 @@ public class Booking {
   @Column(name = "idempotency_key", nullable = false, unique = true)
   private String idempotencyKey;
 
+  @Column(name = "held_until")
+  private Instant heldUntil; 
+
   @Column(name = "created_at", nullable = false)
   private Instant createdAt = Instant.now();
 
-  public Booking(Long seatId, Long userId, String status, String idempotencyKey) {
+  public void markHeld(Instant heldUntil) {
+    this.status = "HELD"; 
+    this.heldUntil = heldUntil;
+  }
+
+  public void markConfirmed() {
+    this.status = "CONFIRMED"; 
+    this.heldUntil = null;
+  }
+
+  public void markExpired() {
+    this.status = "EXPIRED"; 
+  }
+
+  public Booking(Long seatId, Long userId, String idempotencyKey) {
     this.seatId = seatId;
     this.userId = userId;
-    this.status = status;
     this.idempotencyKey = idempotencyKey;
   }
 
