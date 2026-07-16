@@ -20,11 +20,11 @@ Think Ticketmaster/BookMyShow: browse events, view seat maps, book a seat, get a
 [x] Temporary "hold" state (5 min) while payment is pending, auto-released via scheduled job or Redis `EXPIRE`
 
 ### Phase 4 — Async confirmation
-[] On successful payment, publish an event to a queue
-[] Notification service consumes the queue and sends the confirmation (reuses the earlier notification system)
+[x] On successful payment, publish an event to a queue
+[x] Notification service consumes the queue and sends the confirmation (reuses the earlier notification system)
 
 ### Phase 5 — Rate limiting & abuse protection
-[] Apply rate limiting specifically to the booking endpoint (limit bookings per user per minute)
+[x] Apply rate limiting specifically to the booking endpoint (limit bookings per user per minute)
 
 ### Phase 6 — Waitlist
 [] Sold-out show → users join a waitlist (queue or min-heap by join time/priority)
@@ -40,18 +40,6 @@ Think Ticketmaster/BookMyShow: browse events, view seat maps, book a seat, get a
 | 4 | Async processing, queues | Queue processing | Decoupling, eventual consistency |
 | 5 | Rate limiting | Sliding window | Abuse prevention at scale |
 | 6 | — | Heap / priority queue | Fairness, notification fanout |
-
-## API endpoints (planned)
-
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/events?cursor={cursor}&limit={n}` | Browse events, cursor-paginated |
-| GET | `/events/{id}/showtimes` | List showtimes for an event |
-| GET | `/showtimes/{id}/seats` | Seat map with availability |
-| POST | `/bookings` | Reserve a seat (idempotent) |
-| POST | `/bookings/{id}/confirm` | Confirm payment, trigger notification |
-| DELETE | `/bookings/{id}` | Cancel a hold or booking |
-| POST | `/waitlist` | Join waitlist for a sold-out showtime |
 
 ## Getting started
 

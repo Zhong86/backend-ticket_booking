@@ -104,8 +104,8 @@ CREATE TABLE outbox_events (
     id           BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     aggregate_type VARCHAR(50) NOT NULL,   -- e.g. 'BOOKING'
     aggregate_id   BIGINT NOT NULL,        -- e.g. booking.id
-    event_type     VARCHAR(50) NOT NULL,   -- e.g. 'BOOKING_CONFIRMED'
-    payload        JSONB NOT NULL,
+    event_type     VARCHAR(50) NOT NULL,   -- e.g. 'booking.confirmed'
+    payload        TEXT NOT NULL,
     status         VARCHAR(20) NOT NULL DEFAULT 'PENDING'
                    CHECK (status IN ('PENDING', 'PUBLISHED', 'FAILED')),
     created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),

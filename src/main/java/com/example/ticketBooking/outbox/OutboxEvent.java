@@ -6,9 +6,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
-
 import java.time.Instant;
 
 @Entity
@@ -30,12 +27,9 @@ public class OutboxEvent {
     private Long aggregateId; // e.g. booking.id
 
     @Column(name = "event_type", nullable = false)
-    private String eventType; // e.g. "BOOKING_CONFIRMED"
+    private String eventType; // e.g. "booking.confirmed"
 
-    // Maps to a jsonb column — Hibernate 6 handles the conversion via
-    // @JdbcTypeCode, no manual serialization needed.
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(nullable = false, columnDefinition = "jsonb")
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String payload;
 
     @Column(nullable = false)

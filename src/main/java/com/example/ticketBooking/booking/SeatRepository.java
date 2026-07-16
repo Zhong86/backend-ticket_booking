@@ -15,8 +15,8 @@ import jakarta.transaction.Transactional;
 public interface SeatRepository extends JpaRepository<Seat, Long>{
   // Pessimistic Locking
   @Transactional
-  @Lock(LockModeType.PESSIMISTIC_WRITE)
-  @Override
+  //@Lock(LockModeType.PESSIMISTIC_WRITE)
+  //@Override
   Optional<Seat> findById(Long id);
 
   // Optimistic Locking
