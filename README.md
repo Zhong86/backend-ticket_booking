@@ -27,8 +27,8 @@ Think Ticketmaster/BookMyShow: browse events, view seat maps, book a seat, get a
 [x] Apply rate limiting specifically to the booking endpoint (limit bookings per user per minute)
 
 ### Phase 6 — Waitlist
-[] Sold-out show → users join a waitlist (queue or min-heap by join time/priority)
-[] Seat released → pop next in line, notify them
+[x] Sold-out show → users join a waitlist (queue or min-heap by join time/priority)
+[x] Seat released → pop next in line, notify them
 
 ### Extras
 - [ ] Swap in-memory queue for Amazon SQS
