@@ -30,6 +30,13 @@ Think Ticketmaster/BookMyShow: browse events, view seat maps, book a seat, get a
 [] Sold-out show → users join a waitlist (queue or min-heap by join time/priority)
 [] Seat released → pop next in line, notify them
 
+### Extras
+- [ ] Swap in-memory queue for Amazon SQS
+- [ ] Add distributed lock via Redis (`SET NX`) as an alternative to Postgres row locks
+- [ ] Add consistent hashing if sharding seat inventory across nodes
+- [ ] Add OpenAPI/Swagger docs
+- [ ] Containerize with Docker and deploy to a free-tier cloud instance
+
 ## Concepts covered
 
 | Phase | Backend concept | DSA | System design |
@@ -40,36 +47,6 @@ Think Ticketmaster/BookMyShow: browse events, view seat maps, book a seat, get a
 | 4 | Async processing, queues | Queue processing | Decoupling, eventual consistency |
 | 5 | Rate limiting | Sliding window | Abuse prevention at scale |
 | 6 | — | Heap / priority queue | Fairness, notification fanout |
-
-## Getting started
-
-```bash
-# clone and enter the project
-git clone <repo-url>
-cd ticket-booking-system
-
-# start Postgres and Redis (docker-compose recommended)
-docker-compose up -d
-
-# run the app
-./mvnw spring-boot:run
-```
-
-## Testing concurrency (Phase 2 checkpoint)
-
-A key deliverable of this project is proving your locking strategy works. Include a load test script (e.g. using a simple script with parallel HTTP requests, or a JMeter/k6 plan) that:
-
-1. Fires N concurrent booking requests for the same seat
-2. Asserts exactly 1 succeeds and N-1 receive a "seat unavailable" response
-3. Confirms no data corruption (seat status is consistent after the run)
-
-## Roadmap / stretch goals
-
-- [ ] Swap in-memory queue for Amazon SQS
-- [ ] Add distributed lock via Redis (`SET NX`) as an alternative to Postgres row locks
-- [ ] Add consistent hashing if sharding seat inventory across nodes
-- [ ] Add OpenAPI/Swagger docs
-- [ ] Containerize with Docker and deploy to a free-tier cloud instance
 
 ## Notes
 

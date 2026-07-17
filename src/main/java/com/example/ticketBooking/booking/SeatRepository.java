@@ -12,11 +12,11 @@ import org.springframework.data.repository.query.Param;
 import jakarta.persistence.LockModeType;
 import jakarta.transaction.Transactional;
 
-public interface SeatRepository extends JpaRepository<Seat, Long>{
+public interface SeatRepository extends JpaRepository<Seat, Long> {
   // Pessimistic Locking
   @Transactional
-  //@Lock(LockModeType.PESSIMISTIC_WRITE)
-  //@Override
+  // @Lock(LockModeType.PESSIMISTIC_WRITE)
+  // @Override
   Optional<Seat> findById(Long id);
 
   // Optimistic Locking
@@ -26,4 +26,7 @@ public interface SeatRepository extends JpaRepository<Seat, Long>{
   @Modifying // tells Spring this is a WRITE; uses Entity name NOT table
   @Query("UPDATE Seat s SET s.status = 'AVAILABLE' WHERE s.id in :seatIds")
   void releaseSeats(@Param("seatIds") List<Long> seatIds);
+
+  long countByShowtimeIdAndStatus(Long showtimeId, String status);
+  List<Seat> findByShowtimeIdInAndStatusOrderByShowtimeIdAscIdAsc(List<Long> showtimeIds, String status);
 }
