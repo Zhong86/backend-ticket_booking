@@ -20,6 +20,7 @@ import com.example.ticketBooking.booking.Seat;
 import com.example.ticketBooking.booking.SeatRepository;
 import com.example.ticketBooking.outbox.OutboxEvent;
 import com.example.ticketBooking.outbox.OutboxEventRepository;
+import com.example.ticketBooking.sharding.ShardRouter;
 
 import tools.jackson.databind.ObjectMapper;
 
@@ -32,14 +33,16 @@ public class WaitlistService {
   private final OutboxEventRepository outboxEventRepository;
   private final BookingService bookingService;
   private final ObjectMapper objectMapper;
+  private final ShardRouter shardRouter;
 
   public WaitlistService(WaitlistRepository waitlistRepository, SeatRepository seatRepository,
-      OutboxEventRepository outboxEventRepository, ObjectMapper objectMapper, BookingService bookingService) {
+      OutboxEventRepository outboxEventRepository, ObjectMapper objectMapper, BookingService bookingService, ShardRouter shardRouter) {
     this.waitlistRepository = waitlistRepository;
     this.seatRepository = seatRepository;
     this.outboxEventRepository = outboxEventRepository;
     this.bookingService = bookingService;
     this.objectMapper = objectMapper;
+    this.shardRouter = shardRouter;
   }
 
   public WaitlistEntry joinWaitlist(Long showtimeId, Long userId) {
@@ -60,8 +63,17 @@ public class WaitlistService {
   }
 
   public void promoteWaitlist() {
+    for (String shard : shardRouter.allShards()) {
+      shardRouter.runOnNamedShard(shard, () -> {
+        promoteWaitlistOnCurrentShard();
+        return null;
+      });
+    }
+  }
+
+  private void promoteWaitlistOnCurrentShard() {
     List<WaitlistEntry> waiters = waitlistRepository.findByNotifiedAtIsNullOrderByShowtimeIdAscJoinedAtAsc();
-    if (waiters.isEmpty()){
+    if (waiters.isEmpty()) {
       log.info("Waiters empty");
       return;
     }

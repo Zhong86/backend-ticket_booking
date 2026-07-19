@@ -31,11 +31,8 @@ Think Ticketmaster/BookMyShow: browse events, view seat maps, book a seat, get a
 [x] Seat released → pop next in line, notify them
 
 ### Extras
-- [ ] Swap in-memory queue for Amazon SQS
-- [ ] Add distributed lock via Redis (`SET NX`) as an alternative to Postgres row locks
-- [ ] Add consistent hashing if sharding seat inventory across nodes
-- [ ] Add OpenAPI/Swagger docs
-- [ ] Containerize with Docker and deploy to a free-tier cloud instance
+[x] Add consistent hashing if sharding seat inventory across nodes
+[x] Containerize with Docker and deploy to a free-tier cloud instance
 
 ## Concepts covered
 
@@ -118,4 +115,27 @@ HoldExpirySchedulerTest :
 [!WARNING] 
 Use stats.getPrepareStatementCount() instead of stats.getQueryExecutionCount() to track query numbers. Hibernate's Statistics ignores @Query, so need to track the prepared statements instead. 
 
-
+### Sharding
+Splitting rows across multiple databases - need to determine which row lives on where.
+Needed because database systems can run into bottlenecks on CPU, memory, disc, etc. 
+Shard: a partition of the table.
+Types of sharding: 
+- Geo-based sharding (based on user's location)
+- Range-based sharding (partition based on certain rule)
+- Hash-based sharding (hash of key -> good hash algorithm will evenly distribute)
+#### Manual vs Automatic sharding
+- Automatic will dynamically repartition data when an uneven distribution is detected. Better scalability & performance. 
+- Manual (done in application layer), increase complexity for runtime. Uneven distribution.
+Hotspots due to uneven distribution can lead to performance issues. Migrations is a lot more difficult, system needs to make sure all shards is migrated correctly. 
+#### Advantage of sharding: 
+- Allows sytem to scale out, can handle more data can traditional.
+- Smaller data on each shard means lower indexes & faster query performance. 
+- Reliability and accessibility, downtime does not take the whole system. 
+- Can work on comodity hardware
+#### Disadvantages of sharding: 
+- Not all data can be amendable to sharding. Foreign key relationships can only be maintained in a single shard. 
+- Some types of cross shard queries like JOINS might be complex or not even possible.
+- Once sharding is set up, it is very difficult / not possible to undo. 
+- Need to ensure high availability -> increases operational cost compared to traditional.
+Shard key for this project: showtimeId. 
+Events or venues are small and low-write, better to stay in one database. 

@@ -20,7 +20,7 @@ public class BookingController {
     this.rateLimiterService = rateLimiterService;
   }
 
-  public record BookingRequest(Long seatId, Long userId, String idempotencyKey) {
+  public record BookingRequest(Long showtimeId, Long seatId, Long userId, String idempotencyKey) {
   }
 
   @PostMapping
@@ -32,9 +32,8 @@ public class BookingController {
       return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).build();
     }
 
-    var result = "optimistic".equals(strategy)
-        ? bookingService.bookSeatOptimistic(request.seatId(), request.userId(), request.idempotencyKey())
-        : bookingService.bookSeat(request.seatId(), request.userId(), request.idempotencyKey());
+    var result = bookingService.bookSeatOnShard(
+      request.showtimeId(), strategy, request.seatId(), request.userId(), request.idempotencyKey());
 
     return result
         .map(booking -> ResponseEntity.status(HttpStatus.CREATED).body(booking))

@@ -5,6 +5,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.example.ticketBooking.outbox.OutboxEvent;
 import com.example.ticketBooking.outbox.OutboxEventRepository;
+import com.example.ticketBooking.sharding.ShardRouter;
 
 import tools.jackson.databind.ObjectMapper;
 
@@ -24,15 +25,24 @@ public class BookingService {
   private final OutboxEventRepository outboxEventRepository;
   private final SeatBookingAttemptService seatBookingAttemptService;
   private final ObjectMapper objectMapper;
+  private final ShardRouter shardRouter;
 
   public BookingService(SeatRepository seatRepository, BookingRepository bookingRepository,
       SeatBookingAttemptService seatBookingAttemptService, OutboxEventRepository outboxEventRepository,
-      ObjectMapper objectMapper) {
+      ObjectMapper objectMapper, ShardRouter shardRouter) {
     this.seatRepository = seatRepository;
     this.bookingRepository = bookingRepository;
     this.outboxEventRepository = outboxEventRepository;
     this.seatBookingAttemptService = seatBookingAttemptService;
     this.objectMapper = objectMapper;
+    this.shardRouter = shardRouter;
+  }
+
+  public Optional<Booking> bookSeatOnShard(Long showtimeId, String strategy, Long seatId, Long userId,
+      String idempotencyKey) {
+    return shardRouter.runOnShard(showtimeId, () -> "optimistic".equals(strategy)
+        ? bookSeatOptimistic(seatId, userId, idempotencyKey)
+        : bookSeat(seatId, userId, idempotencyKey));
   }
 
   public Optional<Booking> bookSeatOptimistic(Long seatId, Long userId, String idempotencyKey) {
@@ -118,8 +128,7 @@ public class BookingService {
           "userId", String.valueOf(booking.getUserId()),
           "bookingId", String.valueOf(booking.getId()),
           "seatId", String.valueOf(booking.getSeatId()),
-          "email", "test@gmail.com"
-      );
+          "email", "test@gmail.com");
       Map<String, Object> event = Map.of(
           "eventId", String.valueOf(outboxEvent.getId()),
           "eventType", outboxEvent.getEventType(),

@@ -1,0 +1,94 @@
+services:
+  postgres-shard-0:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: ticket_booking
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql
+      - shard0-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  postgres-shard-1:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: ticket_booking
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql
+      - shard1-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  postgres-shard-2:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: ticket_booking
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5434:5432"
+    volumes:
+      - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql
+      - shard2-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7
+    ports:
+      - "6380:6379"
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672" # management UI, guest/guest
+
+  app:
+    build: .
+    depends_on:
+      postgres-shard-0:
+        condition: service_healthy
+      postgres-shard-1:
+        condition: service_healthy
+      postgres-shard-2:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: password
+      SHARDING_SHARDS_0_NAME: shard-0
+      SHARDING_SHARDS_0_URL: jdbc:postgresql://postgres-shard-0:5432/ticket_booking
+      SHARDING_SHARDS_1_NAME: shard-1
+      SHARDING_SHARDS_1_URL: jdbc:postgresql://postgres-shard-1:5432/ticket_booking
+      SHARDING_SHARDS_2_NAME: shard-2
+      SHARDING_SHARDS_2_URL: jdbc:postgresql://postgres-shard-2:5432/ticket_booking
+
+volumes:
+  shard0-data:
+  shard1-data:
+  shard2-data:
