@@ -1,0 +1,52 @@
+# Test, then deploy. Mirrors examples/flaky-demo/.github/workflows/deploy.yml
+# in the Flaky Debug Agent repo, adapted from pytest to Maven/JUnit.
+#
+# Scoped to SeatInventoryFlakyTest only: the rest of this repo's test suite
+# needs a live app instance (ConcurrentBookingTest) or Docker/testcontainers
+# (HoldExpirySchedulerTest), which would add unrelated failure modes to a repo
+# whose whole point is one deliberately flaky test.
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  # Re-roll by hand: the flaky test passes about half the time.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Run tests
+        run: ./mvnw -B -Dtest=SeatInventoryFlakyTest -Dsurefire.failIfNoSpecifiedTests=false test
+
+      # Any artifact without an "-attempt-<n>" suffix counts as this run's
+      # own result (attempt 0).
+      - name: Upload JUnit report
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: junit-results
+          path: target/surefire-reports/*.xml
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    environment: production
+    concurrency: production
+    steps:
+      - name: Deploy (mock)
+        run: |
+          echo "Deploying ${GITHUB_SHA::7} to production"
+          echo "### Deployed \`${GITHUB_SHA::7}\` to production (mock)" >> "$GITHUB_STEP_SUMMARY"
