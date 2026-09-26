@@ -4,46 +4,8 @@ A practice backend project for **Amazon (AWS) Backend Internship** prep — buil
 
 Think Ticketmaster/BookMyShow: browse events, view seat maps, book a seat, get a confirmation. Simple to describe, deep enough to require real concurrency control, caching, async processing, and rate limiting.
 
-## Build phases
-### Phase 1 — Catalog & browsing
-[x] `events`, `venues`, `showtimes` tables
-[x] `GET /events` with **cursor-based (keyset) pagination**
-[x] Redis cache-aside for popular event listings
-
-### Phase 2 — Seat inventory & locking
-[x] `seats` table (`id`, `showtime_id`, `row`, `col`, `status`)
-[x] `POST /bookings` using `SELECT ... FOR UPDATE` (pessimistic) or a `version` column (optimistic locking)
-[x] Load test: fire 50 concurrent requests at the same seat, prove exactly one succeeds
-
-### Phase 3 — Idempotency & holds
-[x] `Idempotency-Key` header so retried requests don't double-book
-[x] Temporary "hold" state (5 min) while payment is pending, auto-released via scheduled job or Redis `EXPIRE`
-
-### Phase 4 — Async confirmation
-[x] On successful payment, publish an event to a queue
-[x] Notification service consumes the queue and sends the confirmation (reuses the earlier notification system)
-
-### Phase 5 — Rate limiting & abuse protection
-[x] Apply rate limiting specifically to the booking endpoint (limit bookings per user per minute)
-
-### Phase 6 — Waitlist
-[x] Sold-out show → users join a waitlist (queue or min-heap by join time/priority)
-[x] Seat released → pop next in line, notify them
-
-### Extras
-[x] Add consistent hashing if sharding seat inventory across nodes
-[x] Containerize with Docker and deploy to a free-tier cloud instance
-
-## Concepts covered
-
-| Phase | Backend concept | DSA | System design |
-|---|---|---|---|
-| 1 | Caching, pagination | — | Cache invalidation strategy |
-| 2 | Transactions, locking | — | Race conditions, consistency |
-| 3 | Idempotency, TTL | — | Exactly-once semantics |
-| 4 | Async processing, queues | Queue processing | Decoupling, eventual consistency |
-| 5 | Rate limiting | Sliding window | Abuse prevention at scale |
-| 6 | — | Heap / priority queue | Fairness, notification fanout |
+## IBM Bob 2.0 Hackathon
+Used as the test demo for the flaky debugger. This repo consists of concurrent calls that can trigger unstable failure tests. Uses Java, Springboot Maven.
 
 ## Notes
 
