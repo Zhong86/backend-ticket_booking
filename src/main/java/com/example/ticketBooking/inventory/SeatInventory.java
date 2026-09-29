@@ -21,7 +21,7 @@ public class SeatInventory {
         return available;
     }
 
-    public void reserve() {
+    public synchronized void reserve() {
         int current = available;
         if (current <= 0) {
             throw new SeatOutOfStockException();
